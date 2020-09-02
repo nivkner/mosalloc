@@ -74,6 +74,22 @@ setHugePagesCount() {
     sudo bash -c "echo $1 > $huge_pages_file"
 }
 
+disableTHP() {
+    thp=`cat /sys/kernel/mm/transparent_hugepage/enabled`
+    if [[ $thp != "always madvise [never]" ]]; then
+        echo "Disable Transparent Huge Papges (set THP to never)"
+        sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+    fi
+}
+
+setOvercommitMemory() {
+    overcommit=`cat /proc/sys/vm/overcommit_memory`
+    if (( $overcommit != 1 )); then
+        echo "Enable overcommit memory"
+        sudo bash -c "echo 1 > /proc/sys/vm/overcommit_memory"
+    fi
+}
+
 printHugePagesStatus() {
     echo "  # of 2MB pages(node${node}) == $(getLargePagesCount)"
     echo "  # of 1GB pages(node${node}) == $(getHugePagesCount)"
@@ -84,6 +100,8 @@ large_pages_file=${proc_path}/hugepages-2048kB/nr_hugepages
 huge_pages_file=${proc_path}/hugepages-1048576kB/nr_hugepages
 
 echo "---------------- DEBUG INFO ----------------"
+setOvercommitMemory
+disableTHP
 echo "Reserving hugepages..."
 echo "Currently:"
 printHugePagesStatus
