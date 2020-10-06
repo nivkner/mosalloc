@@ -13,6 +13,10 @@ The allocator is primarily useful for architectural virtual memory studies. It a
 models.
 For more information about Mosalloc, its usages, and motivation, please refer to the paper which was published in [MICRO '20](https://www.microarch.org/micro53/).
 
+# Prerequisites
+- Sudo permissions: reserving hugepages requires sudo permissions. We recommend to configure sudo permissions without password to fully automate the workflow. Sudo without password may stop the workflow at these steps prompting for your password.
+- Python3
+
 # Technical Details
 Mosalloc is implemented as a dynamic library and can be pre-loaded before glibc (using LD_PRELOAD environment variable) and hooks all memory requests made by an application. 
 - First, Mosalloc intercepts `malloc()` requests by hooking the `morecore()` function, which `malloc()` calls when it needs to extend the heap. 
