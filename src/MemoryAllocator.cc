@@ -1,7 +1,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
-
+#include <sys/syscall.h>
 #include <assert.h>
 #include "MemoryAllocator.h"
 
@@ -89,18 +89,20 @@ void MemoryAllocator::InitRegions(void *brk_region_base) {
         void* file_end = PTR_ADD(file_start, _mmap_file_hpbr.GetRegionMaxSize());
 
         pid_t pid = getpid();
+        pid_t tid = syscall(SYS_gettid);
         FILE *log_file = fopen ("pools_base_pointers.out", "a+");
         // check if the file is empty
         if (!fseek(log_file, 0, SEEK_END)) {
             unsigned long len = (unsigned long)ftell(log_file);
             if (len == 0) {
                 fprintf(log_file, 
-                        "pid,anon-mmap-start,anon-mmap-end,brk-start,brk-end,file-mmap-start,file-mmap-end\n");
+                        "pid,tid,anon-mmap-start,anon-mmap-end,brk-start,brk-end,file-mmap-start,file-mmap-end\n");
             }
         }
-        fprintf(log_file, "%d,%p,%p,%p,%p,%p,%p\n", 
-                pid, anon_start, anon_end, 
-                brk_start, brk_end, 
+        fprintf(log_file, "%d,%d,%p,%p,%p,%p,%p,%p\n",
+                pid, tid,
+                anon_start, anon_end,
+                brk_start, brk_end,
                 file_start, file_end);
         fclose(log_file);
     }
