@@ -7,49 +7,6 @@
 
 #include "HugePageBackedRegion.h"
 
-inline void ValidateRegionOffsets(off_t start_1gb_offset,
-                                  off_t end_1gb_offset,
-                                  off_t start_2mb_offset,
-                                  off_t end_2mb_offset) {
-    auto region_1gb_size = (end_1gb_offset - start_1gb_offset);
-    auto region_2mb_size = (end_2mb_offset - start_2mb_offset);
-
-    // Validate that end >= start
-    if (end_1gb_offset < start_1gb_offset) {
-        THROW_EXCEPTION("end_1gb_offset < start_1gb_offset");
-    }
-    if (end_2mb_offset < start_2mb_offset) {
-        THROW_EXCEPTION("end_2mb_offset < start_2mb_offset");
-    }
-
-    // Validate 1GB and 2MB offsets are aligned to 4KB
-    // (alloffsets should be aligned to page size and all pages
-    // sizes are aligned to 4KB).
-    if (!IS_ALIGNED(start_1gb_offset, PageSize::BASE_4KB)) {
-        THROW_EXCEPTION("Invalid 1GB start offset");
-    }
-    if (!IS_ALIGNED(start_2mb_offset, PageSize::BASE_4KB)) {
-        THROW_EXCEPTION("Invalid 2MB start offset");
-    }
-
-    // Validate 1GB boundaries define 1GB pages
-    if (!IS_ALIGNED((end_1gb_offset - start_1gb_offset), PageSize::HUGE_1GB)) {
-        THROW_EXCEPTION("Invalid 1GB region boundaries");
-    }
-
-    // Validate 2MB boundaries define 1GB pages
-    if (!IS_ALIGNED((end_2mb_offset - start_2mb_offset), PageSize::HUGE_2MB)) {
-        THROW_EXCEPTION("Invalid 2MB region boundaries");
-    }
-
-    if (region_1gb_size > 0 && region_2mb_size > 0) {
-        // Validate that gap between 1GB and 2MB offsets is aligned to 2MB
-        if (!IS_ALIGNED((start_1gb_offset - start_2mb_offset),
-                        PageSize::HUGE_2MB)) {
-            THROW_EXCEPTION("Invalid gap between 1GB and 2MB offsets");
-        }
-    }
-}
 
 void* HugePageBackedRegion::RegionIntervalListMemAlloc(size_t s) {
     assert(_memory_allocator != nullptr);
@@ -171,22 +128,20 @@ size_t HugePageBackedRegion::ShrinkRegion(size_t new_size) {
 }
 
 HugePageBackedRegion::HugePageBackedRegion() : _initialized(false) {}
- 
+
 void HugePageBackedRegion::Initialize(size_t region_size,
-                                           off_t start_1gb_offset,
-                                           off_t end_1gb_offset,
-                                           off_t start_2mb_offset,
-                                           off_t end_2mb_offset,
-                                           MmapFuncPtr allocator,
-                                           MunmapFuncPtr deallocator,
-                                           void* region_base) {
+                                      MemoryIntervalList& intervalList,
+                                      MmapFuncPtr allocator,
+                                      MunmapFuncPtr deallocator,
+                                      void* region_base) {
     _region_start = nullptr;
     _region_max_size = region_size;
     _region_current_size = 0;
     _memory_allocator = allocator;
     _memory_deallocator = deallocator;
 
-    _region_intervals.Initialize(allocator, deallocator, 10); 
+    size_t max_size = (2 * intervalList.GetLength()) + 1; //In worst case there will be 4KB area between each interval
+    _region_intervals.Initialize(allocator, deallocator, max_size);
 
     _initialized = true;
     
@@ -195,20 +150,17 @@ void HugePageBackedRegion::Initialize(size_t region_size,
         THROW_EXCEPTION("region size is not aligned to 4KB");
     }
 
-    // Validate that given offsets are valid and properly aligned
-    //ValidateRegionOffsets(start_1gb_offset, end_1gb_offset,
-    //                      start_2mb_offset, end_2mb_offset);
+    intervalList.Sort();
+    auto first_region_1gb = intervalList.FirstIntervalOf(PageSize::HUGE_1GB);
+    auto first_region_2mb = intervalList.FirstIntervalOf(PageSize::HUGE_2MB);
 
-    auto region_1gb_size = (end_1gb_offset - start_1gb_offset);
-    auto region_2mb_size = (end_2mb_offset - start_2mb_offset);
-
-    if (region_1gb_size > 0) {
+    if (first_region_1gb != nullptr) {
         // Round up the required region size to 1GB and add additional 1GB
         // to align the allocated memory with 1GB addresses.
         _region_current_size = ROUND_UP(region_size + (size_t)PageSize::HUGE_1GB,
                                         PageSize::HUGE_1GB);
     }
-    else if (region_2mb_size > 0) {
+    else if (first_region_2mb != nullptr) {
         // Round up the required region size to 2MB and add additional 2MB
         // to align the allocated memory with 2MB addresses.
         _region_current_size = ROUND_UP(region_size + (size_t)PageSize::HUGE_2MB,
@@ -225,38 +177,36 @@ void HugePageBackedRegion::Initialize(size_t region_size,
                                      PageSize::BASE_4KB);
 
     // Update _region_start to be aligned with largest page size
-    if (region_1gb_size > 0) {
-        auto start_1gb_ptr = ROUND_UP(((off_t) base_addr + start_1gb_offset),
+    if (first_region_1gb != nullptr) {
+        auto start_1gb_offset = first_region_1gb->_start_offset;
+        auto start_1gb_ptr = ROUND_UP(((off_t) base_addr +  start_1gb_offset),
                                       PageSize::HUGE_1GB);
         _region_start = (void *) (start_1gb_ptr - start_1gb_offset);
-    } 
-    else if (region_2mb_size > 0) {
+    }
+    else if (first_region_2mb != nullptr) {
+        auto start_2mb_offset = first_region_2mb->_start_offset;
         auto start_2mb_ptr = ROUND_UP(((off_t) base_addr + start_2mb_offset),
                                       PageSize::HUGE_2MB);
         _region_start = (void *) (start_2mb_ptr - start_2mb_offset);
-    } 
+    }
     else {
         _region_start = base_addr;
     }
 
     // Update intervals list
     // Add 1GB interval
-    if (region_1gb_size > 0) {
-        _region_intervals.AddInterval(start_1gb_offset,
-                              end_1gb_offset,
-                              PageSize::HUGE_1GB);
+    for (unsigned int i = 0; i < intervalList.GetLength(); i++) {
+        auto interval = intervalList.At(i);
+        _region_intervals.AddInterval(interval._start_offset,
+                                      interval._end_offset,
+                                      interval._page_size);
     }
-    // Add 2MB interval
-    if (region_2mb_size > 0) {
-        _region_intervals.AddInterval(start_2mb_offset,
-                              end_2mb_offset,
-                              PageSize::HUGE_2MB);
-    }
+
     _region_intervals.Sort();
     // Add 4KB intervals
     off_t prev_start_offset = 0;
     size_t intervals_length = _region_intervals.GetLength();
-    for (unsigned int i=0; i<intervals_length; i++) {
+    for (unsigned int i = 0; i < intervals_length; i++) {
         MemoryInterval& interval = _region_intervals.At(i);
         if (prev_start_offset < interval._start_offset) {
             _region_intervals.AddInterval(prev_start_offset,

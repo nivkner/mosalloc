@@ -30,15 +30,23 @@ HugePagesConfiguration::GetGeneralParams() {
     return _general_params; 
 }
 
-unsigned long HugePagesConfiguration::GetEnvironmentVariableValue(
-        const char *key) const {
+
+//NOTE: how this return value are allocated ? if it static allocated dont we need to give size?
+char* HugePagesConfiguration::GetEnvironmentVariable(const char *key) const {
     char *val = getenv(key);
     if (val == NULL) {
         THROW_EXCEPTION("environment key was not found");
     }
+    return val;
+}
+
+unsigned long HugePagesConfiguration::GetEnvironmentVariableValue(
+        const char *key) const {
+    char *val = GetEnvironmentVariable(key);
     return stoul(val);
 }
 
+//Note: using default value to env var.
 void HugePagesConfiguration::ReadGeneralEnvParams(
         HugePagesConfiguration::GeneralParams &params) {
     char *analyze_val = getenv(ANALYZE_HPBRS_ENV_VAR);
@@ -51,51 +59,20 @@ void HugePagesConfiguration::ReadGeneralEnvParams(
 
 void HugePagesConfiguration::ReadMmapPoolEnvParams(
         HugePagesConfiguration::HugePagesConfigurationParams &params) {
-
-    params._1gb_start = GetEnvironmentVariableValue(
-            MMAP_1GB_START_OFFSET_ENV_VAR);
-    params._1gb_end = GetEnvironmentVariableValue(MMAP_1GB_END_OFFSET_ENV_VAR);
-    params._2mb_start = GetEnvironmentVariableValue(
-            MMAP_2MB_START_OFFSET_ENV_VAR);
-    params._2mb_end = GetEnvironmentVariableValue(MMAP_2MB_END_OFFSET_ENV_VAR);
-    params._pool_size = GetEnvironmentVariableValue(MMAP_POOL_SIZE_ENV_VAR);
+    params.configuration_file =
+            GetEnvironmentVariable(CONFIGURATION_FILE_ENV_VAR);
     params._ffa_list_size = GetEnvironmentVariableValue(MMAP_FFA_SIZE_ENV_VAR);
-
-    size_t max_end_offset = params._1gb_end > params._2mb_end ?
-                            params._1gb_end : params._2mb_end;
-    if (max_end_offset > params._pool_size) {
-        THROW_EXCEPTION("mmap pool size does not match given offsets");
-    }
 }
 
 void HugePagesConfiguration::ReadBrkPoolEnvParams(
         HugePagesConfiguration::HugePagesConfigurationParams &params) {
-
-    params._1gb_start = GetEnvironmentVariableValue(
-            BRK_1GB_START_OFFSET_ENV_VAR);
-    params._1gb_end = GetEnvironmentVariableValue(BRK_1GB_END_OFFSET_ENV_VAR);
-    params._2mb_start = GetEnvironmentVariableValue(
-            BRK_2MB_START_OFFSET_ENV_VAR);
-    params._2mb_end = GetEnvironmentVariableValue(BRK_2MB_END_OFFSET_ENV_VAR);
-    params._pool_size = GetEnvironmentVariableValue(BRK_POOL_SIZE_ENV_VAR);
+    params.configuration_file = GetEnvironmentVariable(CONFIGURATION_FILE_ENV_VAR);
     params._ffa_list_size = 0;
-
-    size_t max_end_offset = params._1gb_end > params._2mb_end ?
-                            params._1gb_end : params._2mb_end;
-    if (max_end_offset > params._pool_size) {
-        THROW_EXCEPTION("brk pool size does not match given offsets");
-    }
 }
 
 void HugePagesConfiguration::ReadFileBackedPoolEnvParams(
         HugePagesConfiguration::HugePagesConfigurationParams &params) {
-
-    params._1gb_start = 0;
-    params._1gb_end = 0;
-    params._2mb_start = 0;
-    params._2mb_end = 0;
-    params._pool_size = GetEnvironmentVariableValue(
-            FILE_BACKED_POOL_SIZE_ENV_VAR);
+    params.configuration_file = nullptr;
     params._ffa_list_size = GetEnvironmentVariableValue(
             FILE_BACKED_FFA_SIZE_ENV_VAR);
 }

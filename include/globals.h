@@ -10,7 +10,7 @@
     ((((size_t)(num) + (size_t)(mul) - 1) / (size_t)(mul)) * (size_t)(mul))
 #define ROUND_DOWN(num, mul) \
     ((((size_t)(num)) / ((size_t)(mul))) * ((size_t)(mul)))
-#define IS_ALIGNED(num, alignment) (((size_t)(num) % (size_t)(alignment)) == 0)
+#define IS_ALIGNED(num, alignment) (((off64_t)(num) % (size_t)(alignment)) == 0)
 
 #define __WRITE_ERROR_AND_EXIT(msg)    \
 {\
@@ -56,9 +56,9 @@
 #define MAP_HUGE_1GB    (30 << MAP_HUGE_SHIFT)
 
 enum class PageSize : size_t {
-    BASE_4KB = 4096, // (1 << 30)
+    BASE_4KB = 4096, // (1 << 12)
     HUGE_2MB = 2097152, // (1 << 21)
-    HUGE_1GB = 1073741824, // (1 << 12)
+    HUGE_1GB = 1073741824, // (1 << 30)
     UNKNOWN = 0
 };
 

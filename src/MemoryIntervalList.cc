@@ -13,7 +13,11 @@ void *MemoryIntervalList::AllocateMemory(size_t size) {
     return _mmap(NULL, length, MMAP_PROTECTION, MMAP_FLAGS, -1, 0); 
 }
 
+//ASK: here _munmap fail when size = 0; so i just return withuot doing nothig, thats ok?
 int MemoryIntervalList::FreeMemory(void* addr, size_t size) {
+    if(size == 0) {
+        return 0;
+    }
     size_t length = ROUND_UP(size, PageSize::BASE_4KB);
     return _munmap(addr, length);
 }
@@ -88,5 +92,48 @@ MemoryInterval& MemoryIntervalList::At(int i)
 {
     return _interval_list[i];
 }
+
+MemoryInterval* MemoryIntervalList::FirstIntervalOf(PageSize pageSize)
+{
+    for (unsigned int i = 0 ; i < _list_length; i++) {
+        if (_interval_list[i]._page_size == pageSize)
+            return &(_interval_list[i]);
+    }
+    return nullptr;
+}
+
+void MemoryIntervalList::CopyMemoryIntervalsOf1GBTo(MemoryIntervalList &listToFillWith1GBIntervals) {
+    listToFillWith1GBIntervals.Initialize(_mmap, _munmap, _list_length);
+    for(unsigned int i = 0 ; i < _list_length; i++) {
+        off_t start_offset = this->At(i)._start_offset;
+        off_t end_offset = this->At(i)._end_offset;
+        auto page_size = static_cast<size_t>(this->At(i)._page_size);
+        if (page_size == (size_t )PageSize ::HUGE_1GB)
+            listToFillWith1GBIntervals.AddInterval(start_offset, end_offset, PageSize::HUGE_1GB);
+    }
+}
+
+void MemoryIntervalList::CopyMemoryIntervalsOf2MBTo(MemoryIntervalList &listToFillWith2MBIntervals) {
+    listToFillWith2MBIntervals.Initialize(_mmap, _munmap, _list_length);
+    for(unsigned int i = 0 ; i < _list_length; i++) {
+        off_t start_offset = this->At(i)._start_offset;
+        off_t end_offset = this->At(i)._end_offset;
+        auto page_size = static_cast<size_t>(this->At(i)._page_size);
+        if (page_size == (size_t )PageSize ::HUGE_2MB)
+            listToFillWith2MBIntervals.AddInterval(start_offset, end_offset, PageSize::HUGE_2MB);
+    }
+}
+
+off_t MemoryIntervalList::FindMaxEndOffset() {
+    off_t max_end_offset = 0;
+    for(unsigned int i = 0 ; i < _list_length; i++) {
+        off_t current_end_offset = _interval_list[i]._end_offset;
+        if (max_end_offset < current_end_offset) {
+            max_end_offset = current_end_offset;
+        }
+    }
+    return max_end_offset;
+}
+
 
 

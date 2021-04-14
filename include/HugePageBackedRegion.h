@@ -9,14 +9,12 @@
 
 class HugePageBackedRegion {
     public:
-        void Initialize(size_t region_size,
-                off_t start_1gb_offset,
-                off_t end_1gb_offset,
-                off_t start_2mb_offset,
-                off_t end_2mb_offset,
-                MmapFuncPtr allocator,
-                MunmapFuncPtr deallocator,
-                void* region_base = nullptr);
+
+    void Initialize(size_t region_size,
+                    MemoryIntervalList& intervalList,
+                    MmapFuncPtr allocator,
+                    MunmapFuncPtr deallocator,
+                    void* region_base = nullptr);
 
         HugePageBackedRegion();
         ~HugePageBackedRegion();

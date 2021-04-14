@@ -33,10 +33,12 @@ class MemoryIntervalList {
         size_t GetLength();
         MemoryInterval& At(int i);
 
-        void AddInterval(off_t start_offset,
-                off_t end_offset,
-                PageSize page_size);
+        void AddInterval(off_t start_offset, off_t end_offset, PageSize page_size);
         void Sort();
+        MemoryInterval* FirstIntervalOf(PageSize pageSize);
+        void CopyMemoryIntervalsOf1GBTo(MemoryIntervalList &listToFillWith1GBIntervals);
+        void CopyMemoryIntervalsOf2MBTo(MemoryIntervalList &listToFillWith2MBIntervals);
+        off_t FindMaxEndOffset();
 
     private:
         void SwapIntetrvals(int i, int j);

@@ -9,6 +9,7 @@
 #include "../include/HugePageBackedRegion.h"
 #include "../include/FirstFitAllocator.h"
 #include "../include/HugePagesConfiguration.h"
+#include "ParseCsv.h"
 
 #ifdef THREAD_SAFETY
 #define MUTEX_GUARD(lock) std::lock_guard<std::mutex> guard(lock) 
@@ -53,6 +54,9 @@ class MemoryAllocator {
         void InitRegions(void *brk_region_base);
         int DeallocateFromAnonymousMmapRegion(void*, size_t);
         int DeallocateFromFileMmapRegion(void*, size_t);
+        void SetIntervalConfigList(PoolConfigurationData &configurationData, const char *config_file,
+                                   const char *pool_type);
+
 
         bool _isInitialized = false;
         FirstFitAllocator _mmap_anon_ffa;
@@ -60,6 +64,7 @@ class MemoryAllocator {
         HugePageBackedRegion _mmap_anon_hpbr;
         HugePageBackedRegion _mmap_file_hpbr;
         HugePageBackedRegion _brk_hpbr;
+        MemoryIntervalsValidator _intervals_configuration_validator;
 
         GlibcAllocationFunctions _glibc_funcs;
 
