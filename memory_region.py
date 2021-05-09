@@ -98,7 +98,7 @@ class MemoryRegion:
                 validate_region_offsets(region.start_offset, region.end_offset, region.page_size)
                 if index == 0:
                     continue
-                if not is_aligned((region.start_offset - regions_list[index - 1]), region.page_size):
+                if not is_aligned((region.start_offset - regions_list[index - 1].start_offset), region.page_size):
                     sys.exit("Error: invalid delta between {} offsets".format(regions_page_size))
 
         if len(region_2mb_list) != 0 and len(region_1gb_list) != 0:
