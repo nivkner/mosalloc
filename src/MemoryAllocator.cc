@@ -30,7 +30,7 @@ int GlibcMunmap(void *addr, size_t length) {
 
 void MemoryAllocator::SetIntervalConfigList(PoolConfigurationData &configurationData, const char *config_file,
                                             const char* pool_type) {
-    configurationData.intervalList.Initialize(GlibcMmap, GlibcMunmap, 512); //assumption - config list has maximum 512 1GB and 2MB regions total
+    configurationData.intervalList.Initialize(GlibcMmap, GlibcMunmap, 1024); //assumption - config list has maximum 1024 1GB and 2MB regions total
     parseCsv::ParseCsv(configurationData, config_file, pool_type);
     auto validate_result = _intervals_configuration_validator.Validate(configurationData.intervalList);
     if(validate_result != ValidatorErrorMessage::SUCCESS) {
