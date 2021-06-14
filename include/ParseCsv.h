@@ -29,6 +29,7 @@ public:
      * @param poolType -- the pool type, support {"mmap", "brk", file")
      */
     static void ParseCsv(PoolConfigurationData& configurationData, const char* path, const char* poolType);
+    static int GetConfigFileMaxWindows(const char* path);
 };
 
 #endif //MOSALLOC_PARSECSV_H

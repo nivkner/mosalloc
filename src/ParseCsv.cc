@@ -3,6 +3,20 @@
 #include "globals.h"
 #include <cstdio>
 
+int parseCsv::GetConfigFileMaxWindows(const char* path){
+    int count = 0;
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+        THROW_EXCEPTION("can not open csv file");
+    for (char c = getc(fp); c != EOF; c = getc(fp)) {
+        if (c == '\n') {
+            count = count + 1;
+        }
+    }
+    fclose(fp);
+    return count;
+}
+
 /**
  *
  * @param ls
@@ -15,13 +29,13 @@ void parseCsv::ParseCsv(PoolConfigurationData& configurationData, const char* pa
     FILE *fp = fopen(path, "r");
     char buf[1024];
     if (!fp)
-        THROW_EXCEPTION("cant open csv file");
+        THROW_EXCEPTION("can not open csv file");
     int one_time_size = 0;
     long long int _start_offset, _end_offset, _page_size;
     char *delimiter_token;
     const char *delimiter = ",";
     if(!fgets(buf, 1024, fp))
-        THROW_EXCEPTION("cant read headers");
+        THROW_EXCEPTION("can not read headers");
 
     while (fgets(buf, 1024, fp)) {
         delimiter_token = strtok(buf, delimiter);
