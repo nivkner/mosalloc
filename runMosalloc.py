@@ -162,8 +162,10 @@ else:
 
 # reserve an additional large/huge page so we can pad the pools with this
 # extra page and allow proper alignment of large/huge pages inside the pools
-large_pages= anon_region.getNumOfLargePages() + brk_region.getNumOfLargePages() + 1
-huge_pages = anon_region.getNumOfHugePages() + brk_region.getNumOfHugePages() + 1
+large_pages = anon_region.getNumOfLargePages() + brk_region.getNumOfLargePages()
+large_pages = large_pages + 1 if large_pages > 0 else large_pages
+huge_pages = anon_region.getNumOfHugePages() + brk_region.getNumOfHugePages()
+huge_pages = huge_pages + 1 if huge_pages > 0 else huge_pages
 
 # dispatch the program with the environment we just set
 import subprocess
