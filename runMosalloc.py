@@ -184,9 +184,6 @@ try:
     sys.exit(p.returncode)
 except Exception as e:
     print("Caught an exception: " + str(e))
-    print('Please make sure that you already run:')
-    print('sudo bash -c "echo 1 > /proc/sys/vm/overcommit_memory"')
-    print('sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"')
     sys.exit(-1)
 
 print("Execution completed....")
