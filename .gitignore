@@ -9,7 +9,8 @@
 **/CMakeScripts
 **/compile_commands.json
 
-googletest-build/
-googletest-download/
-googletest-src/
+src/libmosalloc-api.so
+src/libmosalloc.so
+test/mosalloc-test
+test/reserveHugePages.sh
 
