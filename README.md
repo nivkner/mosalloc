@@ -14,8 +14,17 @@ models.
 For more information about Mosalloc, its usages, and motivation, please refer to the paper which was published in [MICRO '20](https://www.microarch.org/micro53/).
 
 # Prerequisites
-- Sudo permissions: reserving hugepages requires sudo permissions. We recommend to configure sudo permissions without password to fully automate the workflow. Sudo without password may stop the workflow at these steps prompting for your password.
-- Python3
+- **CMake**: Mosalloc is built with CMake 3.10 or newer. To download the necessary apt package:
+```
+$ sudo apt install -y cmake
+```
+- **GoogleTest**: Mosalloc is tested with GoogleTest. To download the necessary apt package:
+```
+$ sudo apt install -y libgtest-dev
+```
+- **Linux distro**: The code was tested on Ubuntu 20 LTS. If you are using a different Linux distribution, you should probably modify the aforementioned package names.
+- **Sudo permissions**: The `runMosalloc.py` script tries to reserve hugepages, which requires sudo priviliges. We recommend to [configure sudo permissions without password](https://www.cyberciti.biz/faq/linux-unix-running-sudo-command-without-a-password/) to fully automate this script.
+- **Python**: The `runMosalloc.py` script is written in Python3.
 
 # Technical Details
 Mosalloc is implemented as a dynamic library and can be pre-loaded before glibc (using LD_PRELOAD environment variable) and hooks all memory requests made by an application. 

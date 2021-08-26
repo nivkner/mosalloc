@@ -1,0 +1,16 @@
+**/cmake-build-debug
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/install_manifest.txt
+**/CMakeFiles/
+**/CTestTestfile.cmake
+**/Makefile
+**/*.cbp
+**/CMakeScripts
+**/compile_commands.json
+
+src/libmosalloc-api.so
+src/libmosalloc.so
+test/mosalloc-test
+test/reserveHugePages.sh
+
