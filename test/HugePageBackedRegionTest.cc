@@ -124,9 +124,17 @@ TEST_F(HugePageBackedRegionTest, TestAllocateRegionOfPages_2MB_1GB) {
   test_huge_page_backed_region(2ULL * GB, 1 * GB, 2ULL * GB, 0, 1 * GB);
 }
 
+// This test was removed because it could fail in some systems due to the 
+// fact that the kernel may merge adjacent memory areas. We observed that
+// in some cases, the loader allocates 3 pages (of total size = 12KB) for 
+// TLS/TCB and then the Mosalloc pool will be allocated exactly before this
+// memory area, which causes the kernel to merge these two regions to one
+// region and then the test fails when asserting the region size
+/*
 TEST_F(HugePageBackedRegionTest, TestAllocateRegionOfPages_4KB) {
   test_huge_page_backed_region(1 * GB, 0, 0, 0, 0);
 }
+*/
 
 TEST_F(HugePageBackedRegionTest, TestAllocateRegionOfPages_4KB_1GB) {
   test_huge_page_backed_region(2ULL * GB, 1 * GB, 2ULL * GB, 0, 0);
