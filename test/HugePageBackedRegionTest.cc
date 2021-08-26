@@ -320,12 +320,20 @@ TEST_F(HugePageBackedRegionTest, TestMultiplyWindowsOnly2M) {
     test_huge_page_backed_region(size, configurationList);
 }
 
+// This test was removed because it could fail in some systems due to the 
+// fact that the kernel may merge adjacent memory areas. We observed that
+// in some cases, the loader allocates 3 pages (of total size = 12KB) for 
+// TLS/TCB and then the Mosalloc pool will be allocated exactly before this
+// memory area, which causes the kernel to merge these two regions to one
+// region and then the test fails when asserting the region size
+/*
 TEST_F(HugePageBackedRegionTest, TestMultiplyWindowsOnly4KB) {
     size_t size = 2ULL * GB;
     MemoryIntervalList configurationList;
     configurationList.Initialize(mmap, munmap, 0);
     test_huge_page_backed_region(size, configurationList);
 }
+*/
 
 TEST_F(HugePageBackedRegionTest, TestMultiplyWindowsWithout4KB) {
     size_t size = 2ULL * GB;
