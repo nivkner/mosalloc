@@ -14,3 +14,5 @@ src/libmosalloc.so
 test/mosalloc-test
 test/reserveHugePages.sh
 
+Testing/
+__pycache__/
