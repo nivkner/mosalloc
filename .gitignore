@@ -9,6 +9,8 @@
 **/CMakeScripts
 **/compile_commands.json
 
+Testing
+
 src/libmosalloc-api.so
 src/libmosalloc.so
 test/mosalloc-test
