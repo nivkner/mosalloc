@@ -61,7 +61,11 @@ getLargePagesCount() {
 }
 
 getHugePagesCount() {
-    cat $huge_pages_file
+    if [ -f "$huge_pages_file" ]; then
+        cat $huge_pages_file
+    else
+        echo 0
+    fi
 }
 
 setLargePagesCount() {
@@ -70,8 +74,13 @@ setLargePagesCount() {
 }
 
 setHugePagesCount() {
-    echo "Trying to allocate $1 huge pages"
-    sudo bash -c "echo $1 > $huge_pages_file"
+    if [ -f "$huge_pages_file" ]; then
+        echo "Trying to allocate $1 huge pages"
+        sudo bash -c "echo $1 > $huge_pages_file"
+    else
+        echo "WARNING: 1GB hugepages are not supported/enabled"
+        echo "WARNING: $huge_pages_file does not exist. Skipping reserving 1GB hugepages"
+    fi
 }
 
 disableTHP() {
@@ -126,8 +135,9 @@ if (( $(getHugePagesCount) >= $huge && $(getLargePagesCount) >= $large )); then
     echo "Huge pages were set correctly"
     exit 0
 else
-    echo "Error: could not reserve the requested number of huge pages;"
-    echo "Please reboot the system and try again"
+    echo "Error: could not reserve the requested number of huge pages. Possible solutions:"
+    echo "1. The memory is fragmented. Please reboot the system and try again."
+    echo "2. Please check that 1GB pages are supported in your system."
     exit -1
 fi
 
