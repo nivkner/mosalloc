@@ -25,6 +25,7 @@ std::mutex g_hook_sbrk_mutex;
 std::mutex g_hook_brk_mutex;
 std::mutex g_hook_mmap_mutex;
 //std::mutex g_hook_malloc_mutex;
+bool alloc_request_intercepted = false;
 
 //void *(*__morecore)(ptrdiff_t) = sbrk;
 //__morecore = sbrk;
@@ -51,6 +52,32 @@ std::mutex g_hook_mmap_mutex;
 **/
 bool is_inside_malloc_api = false;
 
+/*
+ * Mosalloc serves allocation requests by overriding glibc morecore hook.
+ * glibc is supposed to call morecore each time an allocation request is sent
+ * but glibc has no free slot that can be used to serve this request.
+ * After Mosalloc is loaded there could be a few leftover free slots in glibc
+ * free list that can be used to serve small allocation requests even that we
+ * want to serve them from Mosalloc pools. For preventing such a scenario we
+ * will consume all leftover free slots remained in glibc before loading 
+ * Mosalloc to force all allocation requests to be served by Mosalloc pools.
+ */
+void consume_glibc_free_slots() {
+    size_t chunk_size = 16;
+    while(true) {
+        alloc_request_intercepted = false;
+        GlibcAllocationFunctions local_glibc_funcs;
+        void* ptr = local_glibc_funcs.CallGlibcMalloc(chunk_size);
+        if (!ptr) {
+            break;
+        }
+        if (alloc_request_intercepted == true) {
+            //local_glibc_funcs.CallGlibcMalloc(4096 - chunk_size - 16);
+            break;
+        }
+    }
+}
+
 static void setup_morecore() {
     GlibcAllocationFunctions local_glibc_funcs;
     void* temp_brk_top = local_glibc_funcs.CallGlibcSbrk(0);
@@ -67,6 +94,8 @@ static void setup_morecore() {
     // base to the nearest hugepage aligned address. This is done because we
     // are not allowed to violate brk semantics and to prevent heap corruption.
     mallopt(M_TRIM_THRESHOLD, -1);
+    
+    mallopt(M_TOP_PAD, 0);
 
     // Limit glibc malloc arenas to 1 arena. This is done to prevent glibc from
     // creating new arenas by calling its internal mmap (and then we cannot
@@ -81,6 +110,7 @@ static void setup_morecore() {
 static void activate_mosalloc() {
     is_library_initialized = true;
     setup_morecore();
+    consume_glibc_free_slots();
 }
 
 static void deactivate_mosalloc() {
@@ -151,7 +181,9 @@ int brk(void *addr) __THROW_EXCEPTION {
 }
 
 void *mosalloc_morecore(intptr_t increment) __THROW_EXCEPTION {
-    return sbrk(increment);
+    alloc_request_intercepted = true;
+    void* ptr = sbrk(increment);
+    return ptr;
 }
 
 void *sbrk(intptr_t increment) __THROW_EXCEPTION {

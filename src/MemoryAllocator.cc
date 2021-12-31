@@ -28,43 +28,60 @@ int GlibcMunmap(void *addr, size_t length) {
     return glibc_funcs.CallGlibcMunmap(addr, length);
 }
 
+void MemoryAllocator::SetIntervalConfigList(PoolConfigurationData &configurationData, const char *config_file,
+                                            const char* pool_type) {
+    int intervals_size = parseCsv::GetConfigFileMaxWindows(config_file) * 2 + 1;
+    configurationData.intervalList.Initialize(GlibcMmap, GlibcMunmap, intervals_size);
+    parseCsv::ParseCsv(configurationData, config_file, pool_type);
+    auto validate_result = _intervals_configuration_validator.Validate(configurationData.intervalList);
+    if(validate_result != ValidatorErrorMessage::SUCCESS) {
+        THROW_EXCEPTION("interval list is invalid")
+    }
+    if (configurationData.intervalList.FindMaxEndOffset() > (off_t)configurationData.size) {
+        THROW_EXCEPTION("pool size does not match given offsets");
+    }
+}
 
 void MemoryAllocator::InitRegions(void *brk_region_base) {
     HugePagesConfiguration hppc;
-    auto mmap_params = hppc.ReadFromEnvironmentVariables
-            (HugePagesConfiguration::ConfigType::MMAP_POOL);
-    _mmap_anon_hpbr.Initialize(mmap_params._pool_size,
-                               mmap_params._1gb_start,
-                               mmap_params._1gb_end,
-                               mmap_params._2mb_start,
-                               mmap_params._2mb_end,
-                               GlibcMmap,
+    auto mmap_params = hppc.ReadFromEnvironmentVariables(HugePagesConfiguration::ConfigType::MMAP_POOL);
+    PoolConfigurationData mmap_configuration_data;
+    std::string mmap_type = "mmap";
+    SetIntervalConfigList(mmap_configuration_data, mmap_params.configuration_file, mmap_type.c_str());
+    _mmap_anon_hpbr.Initialize(mmap_configuration_data.size, mmap_configuration_data.intervalList, GlibcMmap,
                                GlibcMunmap);
 
     void* start = _mmap_anon_hpbr.GetRegionBase();
-    void* end = (void*)((size_t)start + mmap_params._pool_size);
-    _mmap_anon_ffa.Initialize(mmap_params._ffa_list_size, start, end, GlibcMmap,
-                              GlibcMunmap);
+    void* end = (void*)((size_t)start + mmap_configuration_data.size);
+    _mmap_anon_ffa.Initialize(mmap_params._ffa_list_size, start, end, GlibcMmap, GlibcMunmap);
 
     auto mmap_file_params = hppc.ReadFromEnvironmentVariables
             (HugePagesConfiguration::ConfigType::FILE_BACKED_POOL);
-    _mmap_file_hpbr.Initialize(mmap_file_params._pool_size,
-                               0, 0, 0, 0,
+
+
+
+    PoolConfigurationData mmap_file_configuration_list;
+    std::string file_type = "file";
+    SetIntervalConfigList(mmap_file_configuration_list, mmap_params.configuration_file, file_type.c_str());
+
+    mmap_file_configuration_list.intervalList.Initialize(GlibcMmap, GlibcMunmap, 0);
+    _mmap_file_hpbr.Initialize(mmap_file_configuration_list.size,
+                               mmap_file_configuration_list.intervalList,
                                GlibcMmap,
                                GlibcMunmap);
 
     void* mmap_file_start = _mmap_file_hpbr.GetRegionBase();
-    void* mmap_file_end = (void*)((size_t)start + mmap_file_params._pool_size);
+    void* mmap_file_end = (void*)((size_t)start + mmap_file_configuration_list.size);
     _mmap_file_ffa.Initialize(mmap_file_params._ffa_list_size, mmap_file_start,
                               mmap_file_end, GlibcMmap, GlibcMunmap);
 
     auto brk_params = hppc.ReadFromEnvironmentVariables
             (HugePagesConfiguration::ConfigType::BRK_POOL);
-    _brk_hpbr.Initialize(brk_params._pool_size,
-                         brk_params._1gb_start,
-                         brk_params._1gb_end,
-                         brk_params._2mb_start,
-                         brk_params._2mb_end,
+    PoolConfigurationData brk_configuration_list;
+    std::string brk_type = "brk";
+    SetIntervalConfigList(brk_configuration_list, brk_params.configuration_file, brk_type.c_str());
+    _brk_hpbr.Initialize(brk_configuration_list.size,
+                         brk_configuration_list.intervalList,
                          GlibcMmap,
                          GlibcMunmap,
                          brk_region_base);
@@ -93,7 +110,7 @@ void MemoryAllocator::InitRegions(void *brk_region_base) {
         FILE *log_file = fopen ("pools_base_pointers.out", "a+");
         // check if the file is empty
         if (!fseek(log_file, 0, SEEK_END)) {
-            unsigned long len = (unsigned long)ftell(log_file);
+            auto len = (unsigned long)ftell(log_file);
             if (len == 0) {
                 fprintf(log_file, 
                         "pid,tid,anon-mmap-start,anon-mmap-end,brk-start,brk-end,file-mmap-start,file-mmap-end\n");
@@ -198,7 +215,7 @@ void* MemoryAllocator::AllocateFromFileMmapRegion(
 int MemoryAllocator::DeallocateFromAnonymousMmapRegion(void* addr, size_t length) {
     MUTEX_GUARD(_anon_mmap_mutex);
     int res = _mmap_anon_ffa.Free(addr, length);
-    size_t ffa_top_size = (size_t)(PTR_SUB(_mmap_anon_ffa.GetTopAddress(),
+    auto ffa_top_size = (size_t)(PTR_SUB(_mmap_anon_ffa.GetTopAddress(),
                                            _mmap_anon_hpbr.GetRegionBase()));
     if (res == 0
         && ffa_top_size < _mmap_anon_hpbr.GetRegionSize()) {
@@ -214,8 +231,17 @@ int MemoryAllocator::DeallocateFromAnonymousMmapRegion(void* addr, size_t length
 int MemoryAllocator::DeallocateFromFileMmapRegion(void* addr, size_t length) {
     MUTEX_GUARD(_file_mmap_mutex);
     int res = _mmap_file_ffa.Free(addr, length);
-    if (res < 0) {
+    if (res < 0) 
         return res;
+    
+    auto ffa_top_size = (size_t)(PTR_SUB(_mmap_file_ffa.GetTopAddress(),
+                                           _mmap_file_hpbr.GetRegionBase()));
+    if (res == 0
+        && ffa_top_size < _mmap_file_hpbr.GetRegionSize()) {
+        if ((_mmap_file_hpbr.GetRegionSize() - ffa_top_size)
+            > RESIZE_THRESHOLD) {
+            return _mmap_file_hpbr.Resize(ffa_top_size);
+        }
     }
     return GlibcMunmap(addr, length);
 }
@@ -263,7 +289,7 @@ int MemoryAllocator::DeallocateFromMmapRegion(void *addr, size_t size) {
 }
 
 bool MemoryAllocator::IsAddressInHugePageRegions(void *addr) {
-    if (_isInitialized == false)
+    if (!_isInitialized)
         return false;
 
     bool isAddrInAnonMmapPool = _mmap_anon_ffa.Contains(addr);
