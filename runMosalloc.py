@@ -59,8 +59,10 @@ def update_config_file():
 def run_benchmark(environ):
     # reserve an additional large/huge page so we can pad the pools with this
     # extra page and allow proper alignment of large/huge pages inside the pools
-    large_pages = anon_region.get_num_of_large_pages() + brk_region.get_num_of_large_pages() + 1
-    huge_pages = anon_region.get_num_of_huge_pages() + brk_region.get_num_of_huge_pages() + 1
+    large_pages = anon_region.get_num_of_large_pages() + brk_region.get_num_of_large_pages()
+    large_pages = large_pages + 1 if large_pages > 0 else large_pages
+    huge_pages = anon_region.get_num_of_huge_pages() + brk_region.get_num_of_huge_pages()
+    huge_pages = huge_pages + 1 if huge_pages > 0 else huge_pages
 
     try:
         if not args.debug:
