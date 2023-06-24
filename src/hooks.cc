@@ -155,6 +155,16 @@ void *mosalloc_morecore(intptr_t increment) __THROW_EXCEPTION {
 }
 
 void *sbrk(intptr_t increment) __THROW_EXCEPTION {
+    char text[100];
+    static int mosalloc_log = -1;
+
+    if (mosalloc_log < 0) {
+	    mosalloc_log = open("mosalloc.log", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	    // use sprintf to avoid allocation inside morecore
+	    int len = sprintf(text, "start,end\n");
+	    write(mosalloc_log, text, len);
+    }
+
     if (hpbrs_allocator.IsInitialized() == false) {
         GlibcAllocationFunctions local_glibc_funcs;
         return local_glibc_funcs.CallGlibcSbrk(increment);
@@ -181,6 +191,9 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     if (brk(new_brk) < 0) {
         return ((void*)-1);
     }
+
+    int len = sprintf(text, "%p,%p\n", prev_brk, new_brk);
+    write(mosalloc_log, text, len);
 
     brk_top = new_brk;
     return prev_brk;
