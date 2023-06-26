@@ -228,11 +228,8 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
         return ((void*)-1);
     }
 
-    int len = sprintf(text, "%p,%p,", prev_brk, new_brk);
+    int len = sprintf(text, "%p,%p,%p\n", prev_brk, new_brk, __builtin_extract_return_addr(__builtin_return_address(0)));
     write_all(mosalloc_log, text, len);
-    mini_stack_unwind(mosalloc_log);
-    text[0] = '\n';
-    write_all(mosalloc_log, text, 1);
 
     brk_top = new_brk;
     return prev_brk;
