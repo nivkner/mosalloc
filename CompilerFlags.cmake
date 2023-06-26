@@ -21,6 +21,7 @@ enable_cxx_compiler_flag_if_supported("-pedantic")
 enable_cxx_compiler_flag_if_supported("-pedantic-errors")
 enable_cxx_compiler_flag_if_supported("-O3")
 enable_cxx_compiler_flag_if_supported("-fno-omit-frame-pointer")
+enable_cxx_compiler_flag_if_supported("-g")
 #enable_cxx_compiler_flag_if_supported("-Wconversion")
 #enable_cxx_compiler_flag_if_supported("-Wsign-conversion")
 
