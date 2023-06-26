@@ -173,31 +173,6 @@ void *mosalloc_morecore(intptr_t increment) __THROW_EXCEPTION {
     return sbrk(increment);
 }
 
-
-// gets the addresses up the stack from the calling function,
-// and writes them to the given file descriptor
-static inline void mini_stack_unwind(int output_fd) {
-	// to avoid precise size accounting, give some slack for overwriting,
-	// which is big enough that its never overrun
-	const int SLACK = 64;
-	const int BUFFER_SIZE = 1024;
-	const int MAX_BYTES = BUFFER_SIZE - SLACK;
-
-	char ptr_str_buff[BUFFER_SIZE];
-	int level = 0;
-	int bytes_written = 0;
-
-	while (__builtin_frame_address(level) != 0) {
-		bytes_written += sprintf(&ptr_str_buff[bytes_written], "%p:", __builtin_extract_return_addr (__builtin_return_address (level)));
-		if (bytes_written >= MAX_BYTES) {
-			write_all(output_fd, ptr_str_buff, bytes_written);
-		}
-	}
-
-	write_all(output_fd, ptr_str_buff, bytes_written);
-}
-
-
 void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     char text[100];
 
