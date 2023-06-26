@@ -12,6 +12,9 @@
 #include "hooks.h"
 #include "GlibcAllocationFunctions.h"
 #include "MemoryAllocator.h"
+#include "backward.hpp"
+
+using namespace backward;
 
 static void constructor() __attribute__((constructor));
 static void destructor() __attribute__((destructor));
@@ -171,6 +174,32 @@ int brk(void *addr) __THROW_EXCEPTION {
 
 void *mosalloc_morecore(intptr_t increment) __THROW_EXCEPTION {
     return sbrk(increment);
+}
+
+// write the return addresses on the stack to output_fd
+static inline void write_stacktrace(int output_fd) {
+	// get backtrace
+	StackTrace st; st.load_here(32);
+
+	// use slack space to avoid precise size accounting of output string size
+	int slack = 64;
+	const int BUFFER_SIZE = 1024;
+	int max_bytes = BUFFER_SIZE - slack;
+
+	char buffer[BUFFER_SIZE];
+	int bytes_written = 0;
+
+	for (size_t i = 0; i < st.size(); ++i) {
+		bytes_written += sprintf(&buffer[bytes_written], "%p:", (void *)st[i].addr);
+		// flush the buffer to output if it is full
+		if (bytes_written >= max_bytes) {
+			write_all(output_fd, buffer, bytes_written);
+			bytes_written = 0;
+		}
+	}
+
+	// write the remaining string to the output
+	write_all(output_fd, buffer, bytes_written);
 }
 
 void *sbrk(intptr_t increment) __THROW_EXCEPTION {
