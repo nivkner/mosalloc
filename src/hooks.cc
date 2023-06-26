@@ -51,6 +51,8 @@ std::mutex g_hook_mmap_mutex;
 **/
 bool is_inside_malloc_api = false;
 
+static int mosalloc_log = -1;
+
 static void setup_morecore() {
     GlibcAllocationFunctions local_glibc_funcs;
     void* temp_brk_top = local_glibc_funcs.CallGlibcSbrk(0);
@@ -74,6 +76,12 @@ static void setup_morecore() {
     // memory allocation arenas if mutex contention is detected (in a
     // multi-threaded applications)
     mallopt(M_ARENA_MAX, 1);
+
+    char text[16];
+    mosalloc_log = open("mosalloc.log", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    // use sprintf to avoid allocation inside morecore
+    int len = sprintf(text, "start,end,func\n");
+    write(mosalloc_log, text, len);
     
     __morecore = mosalloc_morecore;
 }
@@ -156,14 +164,6 @@ void *mosalloc_morecore(intptr_t increment) __THROW_EXCEPTION {
 
 void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     char text[100];
-    static int mosalloc_log = -1;
-
-    if (mosalloc_log < 0) {
-	    mosalloc_log = open("mosalloc.log", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	    // use sprintf to avoid allocation inside morecore
-	    int len = sprintf(text, "start,end,func\n");
-	    write(mosalloc_log, text, len);
-    }
 
     if (hpbrs_allocator.IsInitialized() == false) {
         GlibcAllocationFunctions local_glibc_funcs;
