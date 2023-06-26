@@ -53,6 +53,17 @@ bool is_inside_malloc_api = false;
 
 static int mosalloc_log = -1;
 
+// write exactly len bytes from input to output_fd
+// return result of final write
+static int write_all(int output_fd, char *input, int len) {
+	int bytes_written = 0;
+	int res = 0;
+	while ((res = write(output_fd, &input[bytes_written], len - bytes_written)) > 0) {
+		bytes_written += res;
+	}
+	return res;
+}
+
 static void setup_morecore() {
     GlibcAllocationFunctions local_glibc_funcs;
     void* temp_brk_top = local_glibc_funcs.CallGlibcSbrk(0);
@@ -81,7 +92,7 @@ static void setup_morecore() {
     mosalloc_log = open("mosalloc.log", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     // use sprintf to avoid allocation inside morecore
     int len = sprintf(text, "start,end,func\n");
-    write(mosalloc_log, text, len);
+    write_all(mosalloc_log, text, len);
     
     __morecore = mosalloc_morecore;
 }
@@ -193,7 +204,7 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     }
 
     int len = sprintf(text, "%p,%p,%p\n", prev_brk, new_brk, __builtin_extract_return_addr(__builtin_return_address(0)));
-    write(mosalloc_log, text, len);
+    write_all(mosalloc_log, text, len);
 
     brk_top = new_brk;
     return prev_brk;
