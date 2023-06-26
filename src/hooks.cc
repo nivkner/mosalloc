@@ -92,7 +92,7 @@ static void setup_morecore() {
     mallopt(M_ARENA_MAX, 1);
 
     char text[16];
-    mosalloc_log = open("mosalloc.log", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    mosalloc_log = open("mosalloc.log", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     // use sprintf to avoid allocation inside morecore
     int len = sprintf(text, "start,end,func\n");
     write_all(mosalloc_log, text, len);
