@@ -192,6 +192,7 @@ static inline void mini_stack_unwind(int output_fd) {
 		if (bytes_written >= MAX_BYTES) {
 			write_all(output_fd, ptr_str_buff, bytes_written);
 		}
+		level += 1;
 	}
 
 	write_all(output_fd, ptr_str_buff, bytes_written);
