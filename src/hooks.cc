@@ -161,7 +161,7 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     if (mosalloc_log < 0) {
 	    mosalloc_log = open("mosalloc.log", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	    // use sprintf to avoid allocation inside morecore
-	    int len = sprintf(text, "start,end\n");
+	    int len = sprintf(text, "start,end,func\n");
 	    write(mosalloc_log, text, len);
     }
 
@@ -192,7 +192,7 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
         return ((void*)-1);
     }
 
-    int len = sprintf(text, "%p,%p\n", prev_brk, new_brk);
+    int len = sprintf(text, "%p,%p,%p\n", prev_brk, new_brk, __builtin_extract_return_addr(__builtin_return_address(0)));
     write(mosalloc_log, text, len);
 
     brk_top = new_brk;
