@@ -88,10 +88,10 @@ static void setup_morecore() {
     // multi-threaded applications)
     mallopt(M_ARENA_MAX, 1);
 
-    char text[16];
+    char text[32];
     mosalloc_log = open("mosalloc.log", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     // use sprintf to avoid allocation inside morecore
-    int len = sprintf(text, "start,end,func\n");
+    int len = sprintf(text, "start,end\nstacktrace\n");
     write_all(mosalloc_log, text, len);
 
     __morecore = mosalloc_morecore;
@@ -203,10 +203,8 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
         return ((void*)-1);
     }
 
-    int len = sprintf(text, "%p,%p,", prev_brk, new_brk);
+    int len = sprintf(text, "%p,%p\n", prev_brk, new_brk);
     write_all(mosalloc_log, text, len);
-    text[0] = '\n';
-    write_all(mosalloc_log, text, 1);
 
     brk_top = new_brk;
     return prev_brk;
