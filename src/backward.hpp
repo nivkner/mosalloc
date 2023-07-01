@@ -694,6 +694,8 @@ struct ResolvedTrace : public Trace {
   // In which binary object this trace is located.
   std::string object_filename;
 
+  std::string_view object_filename_slice;
+
   // The function in the object that contain the trace. This is not the same
   // as source.function which can be an function inlined in object_function.
   std::string object_function;
@@ -1340,9 +1342,8 @@ public:
     while (*funcname && *funcname != '(') {
       funcname += 1;
     }
-    trace.object_filename.assign(filename,
-                                 funcname); // ok even if funcname is the ending
-                                            // \0 (then we assign entire string)
+    // ok even if funcname is the ending \0 (then we assign entire string)
+    trace.object_filename_slice = std::string_view(filename, funcname - filename);
 
     if (*funcname) { // if it's not end of string (e.g. from last frame ip==0)
       funcname += 1;
@@ -1351,8 +1352,8 @@ public:
         funcname_end += 1;
       }
       *funcname_end = '\0';
-      trace.object_function = this->demangle(funcname);
-      trace.source.function = trace.object_function; // we cannot do better.
+      // trace.object_function = this->demangle(funcname);
+      // trace.source.function = trace.object_function; // we cannot do better.
     }
     return trace;
   }
