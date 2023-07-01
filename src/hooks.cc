@@ -12,6 +12,8 @@
 #include "hooks.h"
 #include "GlibcAllocationFunctions.h"
 #include "MemoryAllocator.h"
+
+#define BACKWARD_HAS_BACKTRACE_SYMBOL 1
 #include "backward.hpp"
 
 using namespace backward;
