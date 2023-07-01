@@ -8,6 +8,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <execinfo.h>
 
 #include "hooks.h"
 #include "GlibcAllocationFunctions.h"
@@ -205,6 +206,9 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
 
     int len = sprintf(text, "%p,%p\n", prev_brk, new_brk);
     write_all(mosalloc_log, text, len);
+    void *addresses[32];
+    int trace_size = backtrace(addresses, 32);
+    backtrace_symbols_fd(addresses, trace_size, mosalloc_log);
 
     brk_top = new_brk;
     return prev_brk;
