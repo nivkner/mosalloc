@@ -13,11 +13,6 @@
 #include "GlibcAllocationFunctions.h"
 #include "MemoryAllocator.h"
 
-#define BACKWARD_HAS_BACKTRACE_SYMBOL 1
-#include "backward.hpp"
-
-using namespace backward;
-
 static void constructor() __attribute__((constructor));
 static void destructor() __attribute__((destructor));
 static void setup_morecore();
@@ -98,7 +93,7 @@ static void setup_morecore() {
     // use sprintf to avoid allocation inside morecore
     int len = sprintf(text, "start,end,func\n");
     write_all(mosalloc_log, text, len);
-    
+
     __morecore = mosalloc_morecore;
 }
 
@@ -178,32 +173,6 @@ void *mosalloc_morecore(intptr_t increment) __THROW_EXCEPTION {
     return sbrk(increment);
 }
 
-// write the return addresses on the stack to output_fd
-static inline void write_stacktrace(int output_fd) {
-	// get backtrace
-	StackTrace st; st.load_here(32);
-
-	// use slack space to avoid precise size accounting of output string size
-	int slack = 64;
-	const int BUFFER_SIZE = 1024;
-	int max_bytes = BUFFER_SIZE - slack;
-
-	char buffer[BUFFER_SIZE];
-	int bytes_written = 0;
-
-	for (size_t i = 0; i < st.size(); ++i) {
-		bytes_written += sprintf(&buffer[bytes_written], "%p:", (void *)st[i].addr);
-		// flush the buffer to output if it is full
-		if (bytes_written >= max_bytes) {
-			write_all(output_fd, buffer, bytes_written);
-			bytes_written = 0;
-		}
-	}
-
-	// write the remaining string to the output
-	write_all(output_fd, buffer, bytes_written);
-}
-
 void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     char text[100];
 
@@ -236,7 +205,6 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
 
     int len = sprintf(text, "%p,%p,", prev_brk, new_brk);
     write_all(mosalloc_log, text, len);
-    write_stacktrace(mosalloc_log);
     text[0] = '\n';
     write_all(mosalloc_log, text, 1);
 
