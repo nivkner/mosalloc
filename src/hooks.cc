@@ -52,7 +52,10 @@ std::mutex g_hook_mmap_mutex;
 **/
 bool is_inside_malloc_api = false;
 
+// the file to write the mallocs+backtrace to
 static int mosalloc_log = -1;
+// the file containing the data on which allocation should be made huge page
+static int huge_allocs = -1;
 
 // write exactly len bytes from input to output_fd
 // return result of final write
@@ -89,7 +92,13 @@ static void setup_morecore() {
     // multi-threaded applications)
     mallopt(M_ARENA_MAX, 1);
 
-    mosalloc_log = open("mosalloc.log", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    char *huge_allocs_path = getenv("MOSALLOC_HUGE");
+
+    if (huge_allocs_path) {
+	    huge_allocs = open("mosalloc.log", O_RDONLY);
+    } else {
+	    mosalloc_log = open("mosalloc.log", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    }
 
     __morecore = mosalloc_morecore;
 }
@@ -195,9 +204,12 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     
     void* prev_brk = brk_top;
 
-    if (increment < 0) {
-	    // refuse to decrement the heap, to ensure every allocation occurse in a seperate location
-	    return prev_brk;
+    if (huge_allocs < 0) {
+	    if (increment < 0) {
+		    // when gathering data, refuse to decrement the heap,
+		    // to ensure every allocation occurse in a seperate location
+		    return prev_brk;
+	    }
     }
 
     void* new_brk = (void*) ((intptr_t)brk_top + increment);
@@ -206,12 +218,16 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
         return ((void*)-1);
     }
 
-    // use sprintf to avoid allocation inside morecore
-    int len = sprintf(text, "\n%p\n%p\n", prev_brk, new_brk);
-    write_all(mosalloc_log, text, len);
     void *addresses[32];
     int trace_size = backtrace(addresses, 32);
-    backtrace_symbols_fd(addresses, trace_size, mosalloc_log);
+    if (huge_allocs < 0) {
+	    // use sprintf to avoid allocation inside morecore
+	    int len = sprintf(text, "\n%p\n%p\n", prev_brk, new_brk);
+	    write_all(mosalloc_log, text, len);
+	    backtrace_symbols_fd(addresses, trace_size, mosalloc_log);
+    } else {
+	    // TODO allocate with huge pages based on data
+    }
 
     brk_top = new_brk;
     return prev_brk;
