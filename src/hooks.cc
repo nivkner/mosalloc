@@ -194,6 +194,12 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     */
     
     void* prev_brk = brk_top;
+
+    if (increment < 0) {
+	    // refuse to decrement the heap, to ensure every allocation occurse in a seperate location
+	    return prev_brk;
+    }
+
     void* new_brk = (void*) ((intptr_t)brk_top + increment);
 
     if (brk(new_brk) < 0) {
