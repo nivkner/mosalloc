@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <dlfcn.h>
 #include <string.h>
@@ -61,6 +62,8 @@ static int mosalloc_log = -1;
 // the file containing the data on which allocation should be made huge page
 static int huge_allocs = -1;
 
+uintptr_t huge_map[HUGE_COUNT][CONTEXT_SIZE];
+
 // write exactly len bytes from input to output_fd
 // return result of final write
 static int write_all(int output_fd, char *input, int len) {
@@ -99,7 +102,23 @@ static void setup_morecore() {
     char *huge_allocs_path = getenv("MOSALLOC_HUGE");
 
     if (huge_allocs_path) {
-	    huge_allocs = open("mosalloc.log", O_RDONLY);
+	    huge_allocs = open(huge_allocs_path, O_RDONLY);
+	    struct stat sb;
+	    fstat(huge_allocs, &sb);
+	    char *huge_allocs_mmap = (char *)local_glibc_funcs.CallGlibcMmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, huge_allocs, /* offset */ strlen("context,NUM_ACCESSES,memory_usage\n"));
+	    assert(huge_allocs_mmap != MAP_FAILED);
+	    for (int i = 0; (i < HUGE_COUNT) && (sb.st_size > 0); i++) {
+		    int idx = 0;
+		    int bytes_read = 0;
+		    while ((sscanf(huge_allocs_mmap, "0x%lx:%n", &huge_map[i][idx], &bytes_read) > 0) && (idx < CONTEXT_SIZE)) {
+			    idx++;
+			    huge_allocs_mmap += bytes_read;
+		    }
+		    // skip the remaining entries until newline
+		    sscanf(huge_allocs_mmap, "%*s\n%n", &bytes_read);
+		    huge_allocs_mmap += bytes_read;
+		    sb.st_size -= bytes_read;
+	    }
     } else {
 	    mosalloc_log = open("mosalloc.log", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     }
