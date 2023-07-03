@@ -14,6 +14,10 @@
 #include "GlibcAllocationFunctions.h"
 #include "MemoryAllocator.h"
 
+#define CONTEXT_SIZE 32
+// lets just go ahead and assume no more than 32 mallocs are selected
+#define HUGE_COUNT 32
+
 static void constructor() __attribute__((constructor));
 static void destructor() __attribute__((destructor));
 static void setup_morecore();
@@ -218,8 +222,8 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
         return ((void*)-1);
     }
 
-    void *addresses[32];
-    int trace_size = backtrace(addresses, 32);
+    void *addresses[CONTEXT_SIZE];
+    int trace_size = backtrace(addresses, CONTEXT_SIZE);
     if (huge_allocs < 0) {
 	    // use sprintf to avoid allocation inside morecore
 	    int len = sprintf(text, "\n%p\n%p\n", prev_brk, new_brk);
