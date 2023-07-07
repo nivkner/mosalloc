@@ -57,10 +57,7 @@ std::mutex g_hook_mmap_mutex;
 **/
 bool is_inside_malloc_api = false;
 
-// the file to write the mallocs+backtrace to
 static int mosalloc_log = -1;
-// the file containing the data on which allocation should be made huge page
-static int huge_allocs = -1;
 
 uintptr_t huge_map[HUGE_COUNT][CONTEXT_SIZE];
 
@@ -99,32 +96,9 @@ static void setup_morecore() {
     // multi-threaded applications)
     mallopt(M_ARENA_MAX, 1);
 
-    char *huge_allocs_path = getenv("MOSALLOC_HUGE");
-
-    if (huge_allocs_path) {
-	    assert((huge_allocs = open(huge_allocs_path, O_RDONLY)) >= 0);
-	    struct stat sb;
-	    assert(fstat(huge_allocs, &sb) >= 0);
-	    char *huge_allocs_mmap = (char *)local_glibc_funcs.CallGlibcMmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, huge_allocs, /* offset */ strlen("context,NUM_ACCESSES,memory_usage\n"));
-	    perror("what?: ");
-	    assert(huge_allocs_mmap != MAP_FAILED);
-	    for (int i = 0; (i < HUGE_COUNT) && (sb.st_size > 0); i++) {
-		    int idx = 0;
-		    int bytes_read = 0;
-		    while ((sscanf(huge_allocs_mmap, "0x%lx:%n", &huge_map[i][idx], &bytes_read) > 0) && (idx < CONTEXT_SIZE)) {
-			    idx++;
-			    huge_allocs_mmap += bytes_read;
-		    }
-		    // skip the remaining entries until newline
-		    sscanf(huge_allocs_mmap, "%*s\n%n", &bytes_read);
-		    huge_allocs_mmap += bytes_read;
-		    sb.st_size -= bytes_read;
-	    }
-    } else {
-	    char text[19] = "start,end,context\n";
-	    mosalloc_log = open("mosalloc.log", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	    write_all(mosalloc_log, text, 18);
-    }
+    char text[19] = "start,end,context\n";
+    mosalloc_log = open("mosalloc.log", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    write_all(mosalloc_log, text, 18);
 
     __morecore = mosalloc_morecore;
 }
@@ -230,12 +204,9 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
     
     void* prev_brk = brk_top;
 
-    if (huge_allocs < 0) {
-	    if (increment < 0) {
-		    // when gathering data, refuse to decrement the heap,
-		    // to ensure every allocation occurse in a seperate location
-		    return prev_brk;
-	    }
+    if (increment < 0) {
+	    // refuse to decrement the heap, to ensure every allocation occurse in a seperate location
+	    return prev_brk;
     }
 
     void* new_brk = (void*) ((intptr_t)brk_top + increment);
@@ -246,18 +217,15 @@ void *sbrk(intptr_t increment) __THROW_EXCEPTION {
 
     void *addresses[CONTEXT_SIZE];
     int trace_size = backtrace(addresses, CONTEXT_SIZE);
-    if (huge_allocs < 0) {
-	    // use sprintf to avoid allocation inside morecore
-	    int len = sprintf(text, "%lu,%lu,\"", (uintptr_t)prev_brk, (uintptr_t)new_brk);
-	    write_all(mosalloc_log, text, len);
-	    backtrace_symbols_fd(addresses, trace_size, mosalloc_log);
-	    // finish quoting the string
-	    text[0] = '\"';
-	    text[1] = '\n';
-	    write_all(mosalloc_log, text, 2);
-    } else {
-	    // TODO allocate with huge pages based on data
-    }
+
+    // use sprintf to avoid allocation inside morecore
+    int len = sprintf(text, "%lu,%lu,\"", (uintptr_t)prev_brk, (uintptr_t)new_brk);
+    write_all(mosalloc_log, text, len);
+    backtrace_symbols_fd(addresses, trace_size, mosalloc_log);
+    // finish quoting the string
+    text[0] = '\"';
+    text[1] = '\n';
+    write_all(mosalloc_log, text, 2);
 
     brk_top = new_brk;
     return prev_brk;
