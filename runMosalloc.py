@@ -2,6 +2,7 @@
 
 import sys
 import os
+from pathlib import Path
 
 class MemoryRegion:
     KB2B = 1024
@@ -166,6 +167,14 @@ large_pages = anon_region.getNumOfLargePages() + brk_region.getNumOfLargePages()
 large_pages = large_pages + 1 if large_pages > 0 else large_pages
 huge_pages = anon_region.getNumOfHugePages() + brk_region.getNumOfHugePages()
 huge_pages = huge_pages + 1 if huge_pages > 0 else huge_pages
+
+# use a config file in CWD to override the parameters of "reserveHugePages.sh"
+reserve_config_path = Path("reserve.cfg")
+if reserve_config_path.exists():
+    cfg = reserve_config_path.read_text().strip().split(',')
+    large_pages = cfg[0]
+    huge_pages = cfg[1]
+
 
 # dispatch the program with the environment we just set
 import subprocess
