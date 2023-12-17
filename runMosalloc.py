@@ -172,8 +172,10 @@ huge_pages = huge_pages + 1 if huge_pages > 0 else huge_pages
 reserve_config_path = Path("reserve.cfg")
 if reserve_config_path.exists():
     cfg = reserve_config_path.read_text().strip().split(',')
-    large_pages = cfg[0]
-    huge_pages = cfg[1]
+    # because mosalloc might try to back other allocations (from the shell etc) as huge pages,
+    # dont let the number of huge pages drop past the default
+    large_pages = max(large_pages, int(cfg[0]))
+    huge_pages = max(huge_pages, int(cfg[1]))
 
 
 # dispatch the program with the environment we just set
