@@ -170,7 +170,8 @@ huge_pages = huge_pages + 1 if huge_pages > 0 else huge_pages
 
 # use a config file in CWD to override the parameters of "reserveHugePages.sh"
 reserve_config_path = Path("reserve.cfg")
-if reserve_config_path.exists():
+# do not reserve while measuring memory usage
+if reserve_config_path.exists() and "experiments/memory_footprint" not in str(Path.cwd()):
     cfg = reserve_config_path.read_text().strip().split(',')
     # because mosalloc might try to back other allocations (from the shell etc) as huge pages,
     # dont let the number of huge pages drop past the default
