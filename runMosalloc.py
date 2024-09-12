@@ -155,11 +155,11 @@ environ = {key: str(MemoryRegion.convertSizeStringToBytes(value)) \
         for key, value in environ.items()}
 environ.update(os.environ)
 # update the LD_PRELOAD to include our library besides others if exist
-ld_preload = os.environ.get("LD_PRELOAD")
-if ld_preload is None:
-    environ["LD_PRELOAD"] = args.library
-else:
-    environ["LD_PRELOAD"] = ld_preload + ':' + args.library
+#ld_preload = os.environ.get("LD_PRELOAD")
+#if ld_preload is None:
+#    environ["LD_PRELOAD"] = args.library
+#else:
+#    environ["LD_PRELOAD"] = ld_preload + ':' + args.library
 
 # reserve an additional large/huge page so we can pad the pools with this
 # extra page and allow proper alignment of large/huge pages inside the pools
