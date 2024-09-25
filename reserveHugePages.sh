@@ -138,6 +138,6 @@ else
     echo "Error: could not reserve the requested number of huge pages. Possible solutions:"
     echo "1. The memory is fragmented. Please reboot the system and try again."
     echo "2. Please check that 1GB pages are supported in your system."
-    exit -1
+    exit 0
 fi
 
