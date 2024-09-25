@@ -188,7 +188,7 @@ try:
         # set THP and reserve hugepages before start running the workload
         subprocess.check_call(['flock', '-x', reserve_huge_pages_script,
             reserve_huge_pages_script, '-l'+str(large_pages),
-            '-h'+str(huge_pages)])
+            '-h'+str(huge_pages), '-n1'])
 
     command_line = [args.dispatch_program] + args.dispatch_args
     p = subprocess.Popen(command_line, env=environ, shell=False)
