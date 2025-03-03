@@ -124,8 +124,8 @@ parser.add_argument('dispatch_args', nargs=argparse.REMAINDER,
 args = parser.parse_args()
 
 # validate the command-line arguments
-if not os.path.isfile(args.library):
-    sys.exit("Error: the mosalloc library cannot be found")
+#if not os.path.isfile(args.library):
+#    sys.exit("Error: the mosalloc library cannot be found")
 
 anon_region = MemoryRegion(args.anon_start_2mb, args.anon_end_2mb,
         args.anon_start_1gb, args.anon_end_1gb,
